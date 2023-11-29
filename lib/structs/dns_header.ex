@@ -48,21 +48,32 @@ defmodule Structs.DnsHeader do
 
     {
       %__MODULE__{
-         id: id,
-        qr: !!(flags >>> 15),    # QR: Query/Response flag
-        opcode: flags >>> 11 &&& 0b1111,  # OPCODE: Operation Code
-        aa: !!(flags >>> 10 &&& 0b1),  # AA: Authoritative Answer flag
-        tc: !!(flags >>> 9 &&& 0b1),   # TC: TrunCation flag
-        rd: !!(flags >>> 8 &&& 0b1),   # RD: Recursion Desired flag
-        ra: !!(flags >>> 7 &&& 0b1),   # RA: Recursion Available flag
-        z: flags >>> 4 &&& 0b1111,     # Z: Reserved field
-        rcode: flags &&& 0b1111,       # RCODE: Response Code
-        qdcount: qdcount,               # QDCOUNT: Question Count
-        ancount: ancount,               # ANCOUNT: Answer Record Count
-        nscount: nscount,               # NSCOUNT: Authority Record Count
-        arcount: arcount                # ARCOUNT: Additional Record Count     
+        id: id,
+        # QR: Query/Response flag
+        qr: !!(flags >>> 15),
+        # OPCODE: Operation Code
+        opcode: flags >>> 11 &&& 0b1111,
+        # AA: Authoritative Answer flag
+        aa: !!(flags >>> 10 &&& 0b1),
+        # TC: TrunCation flag
+        tc: !!(flags >>> 9 &&& 0b1),
+        # RD: Recursion Desired flag
+        rd: !!(flags >>> 8 &&& 0b1),
+        # RA: Recursion Available flag
+        ra: !!(flags >>> 7 &&& 0b1),
+        # Z: Reserved field
+        z: flags >>> 4 &&& 0b1111,
+        # RCODE: Response Code
+        rcode: flags &&& 0b1111,
+        # QDCOUNT: Question Count
+        qdcount: qdcount,
+        # ANCOUNT: Answer Record Count
+        ancount: ancount,
+        # NSCOUNT: Authority Record Count
+        nscount: nscount,
+        # ARCOUNT: Additional Record Count     
+        arcount: arcount
       }
-
     }
   end
 end
