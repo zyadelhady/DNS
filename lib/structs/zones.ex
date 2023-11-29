@@ -1,4 +1,4 @@
-defmodule Zones do
+defmodule Structs.Zones do
   @moduledoc """
     This module provides functionality for managing DNS zones and their associated records using an Agent.
 
@@ -15,10 +15,10 @@ defmodule Zones do
     Zones.add(["example.org", 3600, "IN", "A", "192.168.2.1"])
 
     Zones.get_all()
-    # Output: %{"example.com" => %Zones.ZoneRecord{domain: "example.com", RRs: [%Zones.RRRecord{address: "192.168.1.2", class: "IN", name: "example.com", ttl: 3600, type: "A"}, %Zones.RRRecord{address: "192.168.1.1", class: "IN", name: "example.com", ttl: 3600, type: "A"}]}, "example.org" => %Zones.ZoneRecord{domain: "example.org", RRs: [%Zones.RRRecord{address: "192.168.2.1", class: "IN", name: "example.org", ttl: 3600, type: "A"}]}}
+    # Output: %{"example.com" => %Zones.Structs.ZoneRecord{domain: "example.com", RRs: [%Zones.Structs.RRRecord{address: "192.168.1.2", class: "IN", name: "example.com", ttl: 3600, type: "A"}, %Zones.Structs.RRRecord{address: "192.168.1.1", class: "IN", name: "example.com", ttl: 3600, type: "A"}]}, "example.org" => %Zones.Structs.ZoneRecord{domain: "example.org", RRs: [%Zones.Structs.RRRecord{address: "192.168.2.1", class: "IN", name: "example.org", ttl: 3600, type: "A"}]}}
 
     Zones.get("example.com")
-    # Output: %Zones.ZoneRecord{domain: "example.com", RRs: [%Zones.RRRecord{address: "192.168.1.2", class: "IN", name: "example.com", ttl: 3600, type: "A"}, %Zones.RRRecord{address: "192.168.1.1", class: "IN", name: "example.com", ttl: 3600, type: "A"}]}
+    # Output: %Zones.Structs.ZoneRecord{domain: "example.com", RRs: [%Zones.Structs.RRRecord{address: "192.168.1.2", class: "IN", name: "example.com", ttl: 3600, type: "A"}, %Zones.Structs.RRRecord{address: "192.168.1.1", class: "IN", name: "example.com", ttl: 3600, type: "A"}]}
   """
   use Agent
 
@@ -30,8 +30,8 @@ defmodule Zones do
   {:ok, pid}: The Agent process identifier.
   {:error, any}: An error tuple if Agent start fails.
   """
-  @spec start_link() :: {:ok, pid} | {:error, any}
-  def start_link() do
+  @spec start_link([]) :: {:ok, pid} | {:error, any}
+  def start_link([]) do
     Agent.start_link(fn -> %{} end, name: __MODULE__)
   end
 
@@ -56,10 +56,10 @@ defmodule Zones do
     Agent.update(__MODULE__, fn zones ->
       case Map.get(zones, name) do
         nil ->
-          Map.put(zones, name, %ZoneRecord{
+          Map.put(zones, name, %Structs.ZoneRecord{
             domain: name,
             RRs: [
-              %RRRecord{
+              %Structs.RRRecord{
                 name: name,
                 type: types[String.to_atom(type)],
                 ttl: ttl,
@@ -69,15 +69,15 @@ defmodule Zones do
             ]
           })
 
-        %ZoneRecord{domain: _, RRs: existing_rrs} = record ->
-          updated_record = %ZoneRecord{
+        %Structs.ZoneRecord{domain: _, RRs: existing_rrs} = record ->
+          updated_record = %Structs.ZoneRecord{
             record
             | RRs: [
-                %RRRecord{
+                %Structs.RRRecord{
                   name: name,
                   type: types[String.to_atom(type)],
                   ttl: ttl,
-                  class:  classes[String.to_atom(class)] ,
+                  class: classes[String.to_atom(class)],
                   address: address
                 }
                 | existing_rrs
@@ -94,9 +94,9 @@ defmodule Zones do
 
   Returns:
 
-  A map where keys are domain names and values are ZoneRecord structs.
+  A map where keys are domain names and values are Structs.ZoneRecord structs.
   """
-  # @spec get_all() :: %{String.t() => ZoneRecord.t()}
+  # @spec get_all() :: %{String.t() => Structs.ZoneRecord.t()}
   def get_all do
     Agent.get(__MODULE__, & &1)
   end
@@ -109,9 +109,9 @@ defmodule Zones do
   key: The domain name.
   Returns:
 
-  A ZoneRecord struct for the specified domain, or nil if the domain is not found.
+  A Structs.ZoneRecord struct for the specified domain, or nil if the domain is not found.
   """
-  @spec get(String.t()) :: ZoneRecord.t() | nil
+  @spec get(String.t()) :: Structs.ZoneRecord.t() | nil
   def get(key) do
     Agent.get(__MODULE__, fn zones -> Map.get(zones, key) end)
   end

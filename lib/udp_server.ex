@@ -23,7 +23,7 @@ defmodule UdpServer do
 
   # fallback pattern match to handle all other (non-"quit") messages
   defp handle_packet(data, socket) do
-    IO.inspect(data)
+    Dns.handle(data)
     {:noreply, socket}
   end
 end
