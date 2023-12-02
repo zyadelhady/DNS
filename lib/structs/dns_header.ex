@@ -42,27 +42,27 @@ defmodule Structs.DnsHeader do
   A tuple with the decoded DNS header struct and the remaining message.
   """
   def decode_header(message) do
-    <<id::size(@size_id), flags::size(@size_flags), qdcount::size(@size_qdcount),
-      ancount::size(@size_ancount), nscount::size(@size_nscount),
-      arcount::size(@size_arcount)>> = message
+    <<id::size(@size_id)-integer, flags::size(@size_flags), qdcount::size(@size_qdcount),
+      ancount::size(@size_ancount), nscount::size(@size_nscount), arcount::size(@size_arcount),
+      rest::binary>> = message
 
     {
       %__MODULE__{
         id: id,
         # QR: Query/Response flag
-        qr: !!(flags >>> 15),
+        qr: flags >>> 15 == 1,
         # OPCODE: Operation Code
         opcode: flags >>> 11 &&& 0b1111,
         # AA: Authoritative Answer flag
-        aa: !!(flags >>> 10 &&& 0b1),
+        aa: (flags >>> 10 &&& 0b1) == 1,
         # TC: TrunCation flag
-        tc: !!(flags >>> 9 &&& 0b1),
+        tc: (flags >>> 9 &&& 0b1) == 1,
         # RD: Recursion Desired flag
-        rd: !!(flags >>> 8 &&& 0b1),
+        rd: (flags >>> 8 &&& 0b1) == 1,
         # RA: Recursion Available flag
-        ra: !!(flags >>> 7 &&& 0b1),
+        ra: (flags >>> 7 &&& 0b1) == 1,
         # Z: Reserved field
-        z: flags >>> 4 &&& 0b1111,
+        z: flags >>> 4 &&& 0b111,
         # RCODE: Response Code
         rcode: flags &&& 0b1111,
         # QDCOUNT: Question Count
@@ -73,7 +73,8 @@ defmodule Structs.DnsHeader do
         nscount: nscount,
         # ARCOUNT: Additional Record Count     
         arcount: arcount
-      }
+      },
+      rest
     }
   end
 end

@@ -2,6 +2,8 @@ defmodule Dns do
   @moduledoc """
   Documentation for `Dns`.
   """
+  alias Structs.DnsQuestion
+  alias Structs.DnsHeader
   require Logger
 
   @doc """
@@ -15,17 +17,12 @@ defmodule Dns do
   """
   def handle(message) do
     # first_16_bits = :binary.part(message, 0, 16)
-    extract_header(message)
-    # IO.inspect(first_16_bits)
-    IO.inspect(message)
-  end
+    all =
+      message
+      |> DnsHeader.decode_header()
+      |> DnsQuestion.decode_question()
 
-  def extract_header(message) do
-    # :binary.part(message,0,16)
-    <<id::size(16), qr::size(1), op_code::size(4), aa::size(1), tc::size(1), rd::size(1),
-      ra::size(1), z::size(3), rcode::size(4), qdcount::size(16), ancount::size(16),
-      nscount::size(16), arcount::size(16), rest::binary>> = message
-
-    IO.inspect(op_code)
+    IO.inspect(all)
+    # IO.inspect(rest)
   end
 end
