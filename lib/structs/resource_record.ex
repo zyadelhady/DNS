@@ -3,7 +3,8 @@ defmodule Structs.ResourceRecord do
 
   def decode_record({header, question, message}) do
     IO.inspect(message)
-    {name, rest} = Decompress.parse_name(message, [])
+    [head | tail] = message
+    {name, rest} = Decompress.parse_name(head, [])
 
     {
       header,
