@@ -1,8 +1,4 @@
 defmodule Structs.DnsQuestion do
-  @sizename 16
-  @sizetype 16
-  @sizeclass 16
-
   import Bitwise
 
   defstruct [
@@ -15,7 +11,7 @@ defmodule Structs.DnsQuestion do
     {decoded_name, rest} =
       rest_message
       |> :binary.bin_to_list()
-      |> decode_name([])
+      |> Decompress.parse_name([])
 
     {type_class, return_rest} = Enum.split(rest, 4)
 
@@ -32,32 +28,11 @@ defmodule Structs.DnsQuestion do
     }
   end
 
-  defp decode_name([], result, rest), do: {List.to_string(result), rest}
-
-  defp decode_name([head | tail], result) do
-    case head == 0 do
-      true ->
-        decode_name([], result, tail)
-
-      false ->
-        is_pointer = head >>> 6 == 0b11
-        length = head &&& 0x3FFF
-
-        if !is_pointer do
-          {domain, next} = tail |> Enum.split(length)
-          domain_with_dot = domain ++ [46]
-          result = result ++ domain_with_dot
-          decode_name(next, result)
-        end
-    end
-  end
-
   defp extract_type_and_class(list) do
     {type, class} = Enum.split(list, 2)
     decimal_type = type |> get_decimal
     decimal_class = class |> get_decimal
     {decimal_type, decimal_class}
-
   end
 
   defp get_decimal(list) do
@@ -66,6 +41,3 @@ defmodule Structs.DnsQuestion do
     end)
   end
 end
-
-
-
