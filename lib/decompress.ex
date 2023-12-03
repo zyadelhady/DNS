@@ -1,13 +1,14 @@
 defmodule Decompress do
   import Bitwise
-  def parse_name([], result, rest), do: {List.to_string(result), rest}
 
-  def parse_name([head | tail], result) do
-    IO.inspect(head)
+  def parse_name([], result, rest, l), do: {List.to_string(result), rest, l}
+
+  def parse_name([head | tail], result, l) do
+    # IO.inspect(head)
 
     case head == 0 do
       true ->
-        parse_name([], result, tail)
+        parse_name([], result, tail, l)
 
       false ->
         is_pointer = head >>> 6 == 0b11
@@ -17,7 +18,7 @@ defmodule Decompress do
           {domain, next} = tail |> Enum.split(length)
           domain_with_dot = domain ++ [46]
           result = result ++ domain_with_dot
-          parse_name(next, result)
+          parse_name(next, result, length + l)
         end
     end
   end
