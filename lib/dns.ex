@@ -25,8 +25,9 @@ defmodule Dns do
     {message, 0, %DnsMessage{}}
     |> decode_header()
     |> decode_question()
-    # |> ResourceRecord.decode_record()
-    |> IO.inspect()
+    |> decode_records()
+    {}
+    # |> IO.inspect()
   end
 
   @doc """
@@ -87,27 +88,51 @@ defmodule Dns do
   end
 
   def decode_question({message, start, parsed_message}) do
-    {_, message_start} = Enum.split(message, start)
+    {decoded_name, stopped_at} =
+      message
+      |> Decompress.parse_name(start, [])
 
-    {decoded_name, stopped_at,last} =
-      message_start
-      |> Decompress.parse_name([], 0)
+    type_class = Enum.slice(message, (stopped_at + 1)..(stopped_at + 4))
+    {type, class} = extract_type_and_class(type_class)
 
-    #
-    # # {type_class, return_rest} = Enum.split(rest, 4)
-    #
-    # # {type, class} = extract_type_and_class(type_class)
-    #
-    # {
-    #   message,
-    #   %Structs.DnsMessage{
-    #     parsed_message
-    #     | question: %Structs.DnsQuestion{
-    #         # type: type,
-    #         name: decoded_name
-    #         # class: class
-    #       }
-    #   }
-    # }
+    {
+      message,
+      stopped_at + 4,
+      %Structs.DnsMessage{
+        parsed_message
+        | question: %Structs.DnsQuestion{
+            type: type,
+            name: decoded_name,
+            class: class
+          }
+      }
+    }
+  end
+
+  defp extract_type_and_class(list) do
+    {type, class} = Enum.split(list, 2)
+    decimal_type = type |> get_decimal
+    decimal_class = class |> get_decimal
+    {decimal_type, decimal_class}
+  end
+
+  defp get_decimal(list) do
+    Enum.reduce(list, 0, fn bit, acc ->
+      acc * 2 + bit
+    end)
+  end
+
+  def decode_records({message, start, parsed_message}) do
+    {decoded_name, stopped_at} =
+      message
+      |> Decompress.parse_name(start, [])
+
+    IO.inspect(decoded_name)
+
+    {
+      message,
+      22,
+      %DnsMessage{}
+    }
   end
 end
