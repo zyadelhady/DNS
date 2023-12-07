@@ -1,27 +1,22 @@
 defmodule Decompress do
   import Bitwise
 
-  def parse_name(result, stopped_at), do: {List.to_string(result), stopped_at}
+  def parse_label(false, message, start) do
+    l = Enum.at(message, start) &&& 0x3FFF
+    {Enum.slice(message, (start + 1)..(start + l)) ++ [46], start + l + 1, true}
+  end
 
-  def parse_name(message, start, result) do
-    {_, [head | tail]} = Enum.split(message, start)
+  def parse_label(true, message, start) do
+    pointer =
+      message
+      |> Enum.slice(start..(start + 1))
+      |> :binary.list_to_bin()
+      |> :binary.decode_unsigned(:big)
 
-    # IO.inspect(head)
+    pointer = pointer &&& 0x3FFF
 
-    case head == 0 do
-      true ->
-        parse_name(result, start)
+    {decoded_name, _, _} = parse_label(false, message, pointer)
 
-      false ->
-        is_pointer = head >>> 6 == 0b11
-        length = head &&& 0x3FFF
-
-        if !is_pointer do
-          {domain, next} = tail |> Enum.split(length)
-          domain_with_dot = domain ++ [46]
-          result = result ++ domain_with_dot
-          parse_name(message, start + length + 1, result)
-        end
-    end
+    {decoded_name, start + 2, false}
   end
 end

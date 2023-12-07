@@ -25,9 +25,8 @@ defmodule Dns do
     {message, 0, %DnsMessage{}}
     |> decode_header()
     |> decode_question()
-    |> decode_records()
-    {}
-    # |> IO.inspect()
+    |> decode_authortives_section()
+    |> IO.inspect()
   end
 
   @doc """
@@ -90,9 +89,9 @@ defmodule Dns do
   def decode_question({message, start, parsed_message}) do
     {decoded_name, stopped_at} =
       message
-      |> Decompress.parse_name(start, [])
+      |> parse_name(start, [])
 
-    type_class = Enum.slice(message, (stopped_at + 1)..(stopped_at + 4))
+    type_class = Enum.slice(message, stopped_at..(stopped_at + 3))
     {type, class} = extract_type_and_class(type_class)
 
     {
@@ -122,17 +121,63 @@ defmodule Dns do
     end)
   end
 
-  def decode_records({message, start, parsed_message}) do
+  def decode_authortives_section({message, start, parsed_message}) do
+    IO.puts("----------------------------")
+
     {decoded_name, stopped_at} =
       message
-      |> Decompress.parse_name(start, [])
+      |> parse_name(start, [])
 
-    IO.inspect(decoded_name)
+    type_class = Enum.slice(message, stopped_at..(stopped_at + 3))
+    {type, class} = extract_type_and_class(type_class)
+
+    stopped_at = stopped_at + 4
+
+    ttl =
+      Enum.slice(message, stopped_at..(stopped_at + 3))
+      |> :binary.list_to_bin()
+      |> :binary.decode_unsigned(:big)
+
+    stopped_at = stopped_at + 4
+
+    IO.inspect(stopped_at)
+
+    rdl =
+      Enum.slice(message, stopped_at..(stopped_at + 1))
+      |> :binary.list_to_bin()
+      |> :binary.decode_unsigned(:big)
 
     {
       message,
-      22,
-      %DnsMessage{}
+      stopped_at + 4,
+      %DnsMessage{
+        parsed_message
+        | resource_records: [
+            %ResourceRecord{name: decoded_name, type: type, class: class, ttl: ttl, rdlength: rdl}
+          ]
+      }
     }
+  end
+
+  def is_pointer(octet) do
+    octet >>> 6 == 0b11
+  end
+
+  def parse_name(message, start, result) do
+    case Enum.at(message, start) == 0 do
+      true ->
+        {List.to_string(result), start + 1}
+
+      false ->
+        {label, last, continue} =
+          is_pointer(Enum.at(message, start))
+          |> Decompress.parse_label(message, start)
+
+        if continue do
+          parse_name(message, last, result ++ label)
+        else
+          {List.to_string(result ++ label), last}
+        end
+    end
   end
 end

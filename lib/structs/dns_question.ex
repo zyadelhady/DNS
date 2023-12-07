@@ -6,5 +6,4 @@ defmodule Structs.DnsQuestion do
     :type,
     :class
   ]
-
 end
