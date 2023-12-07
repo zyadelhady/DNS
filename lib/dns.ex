@@ -4,6 +4,7 @@ defmodule Dns do
   """
 
   import Bitwise
+  alias Credo.Check.Refactor.IoPuts
   alias Structs.DnsMessage
   alias Structs.ResourceRecord
   alias Structs.DnsQuestion
@@ -122,41 +123,66 @@ defmodule Dns do
   end
 
   def decode_authortives_section({message, start, parsed_message}) do
-    IO.puts("----------------------------")
+    header = parsed_message.header
+    datal = header.nscount
 
-    {decoded_name, stopped_at} =
-      message
-      |> parse_name(start, [])
-
-    type_class = Enum.slice(message, stopped_at..(stopped_at + 3))
-    {type, class} = extract_type_and_class(type_class)
-
-    stopped_at = stopped_at + 4
-
-    ttl =
-      Enum.slice(message, stopped_at..(stopped_at + 3))
-      |> :binary.list_to_bin()
-      |> :binary.decode_unsigned(:big)
-
-    stopped_at = stopped_at + 4
-
-    IO.inspect(stopped_at)
-
-    rdl =
-      Enum.slice(message, stopped_at..(stopped_at + 1))
-      |> :binary.list_to_bin()
-      |> :binary.decode_unsigned(:big)
+    {rrs, last} = parse_rr(message, start, [], datal)
 
     {
       message,
-      stopped_at + 4,
+      last,
       %DnsMessage{
         parsed_message
-        | resource_records: [
-            %ResourceRecord{name: decoded_name, type: type, class: class, ttl: ttl, rdlength: rdl}
-          ]
+        | resource_records: rrs
       }
     }
+  end
+
+  def parse_rr(message, start, rrs, index) do
+    case index == 0 do
+      true ->
+        {rrs, start}
+
+      false ->
+        {decoded_name, stopped_at} =
+          message
+          |> parse_name(start, [])
+
+        type_class = Enum.slice(message, stopped_at..(stopped_at + 3))
+        {type, class} = extract_type_and_class(type_class)
+
+        stopped_at = stopped_at + 4
+
+        ttl =
+          Enum.slice(message, stopped_at..(stopped_at + 3))
+          |> :binary.list_to_bin()
+          |> :binary.decode_unsigned(:big)
+
+        stopped_at = stopped_at + 4
+
+        rdl =
+          Enum.slice(message, stopped_at..(stopped_at + 1))
+          |> :binary.list_to_bin()
+          |> :binary.decode_unsigned(:big)
+
+        stopped_at = stopped_at + 2
+
+        {decoded_server_name, last} = parse_name(message, stopped_at, [])
+
+        rrs = [
+          %ResourceRecord{
+            rdata: decoded_server_name,
+            name: decoded_name,
+            type: type,
+            class: class,
+            ttl: ttl,
+            rdlength: rdl
+          }
+          | rrs
+        ]
+
+        parse_rr(message, last, rrs, index - 1)
+    end
   end
 
   def is_pointer(octet) do
@@ -178,6 +204,15 @@ defmodule Dns do
         else
           {List.to_string(result ++ label), last}
         end
+    end
+  end
+
+  def decode_server_name(message, start, length) do
+    list = Enum.slice(message, start, length)
+    result = []
+
+    for octet <- list do
+      ispointer = is_pointer(hd(list))
     end
   end
 end
