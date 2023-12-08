@@ -5,7 +5,6 @@ defmodule Structs.DnsHeader do
   This module defines a struct representing the header of a DNS message.
   """
 
-  import Bitwise
 
   defstruct [
     :id,

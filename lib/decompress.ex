@@ -15,7 +15,7 @@ defmodule Decompress do
 
     pointer = pointer &&& 0x3FFF
 
-    {decoded_name, _, _} = parse_label(false, message, pointer)
+    {decoded_name, stopped_at, _} = parse_label(false, message, pointer)
 
     {decoded_name, start + 2, false}
   end

@@ -1,5 +1,4 @@
 defmodule Structs.DnsQuestion do
-  import Bitwise
 
   defstruct [
     :name,

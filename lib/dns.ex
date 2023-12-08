@@ -4,19 +4,11 @@ defmodule Dns do
   """
 
   import Bitwise
-  alias Credo.Check.Refactor.IoPuts
   alias Structs.DnsMessage
   alias Structs.ResourceRecord
   alias Structs.DnsQuestion
   alias Structs.DnsHeader
   require Logger
-
-  @size_id 16
-  @size_flags 16
-  @size_qdcount 16
-  @size_ancount 16
-  @size_nscount 16
-  @size_arcount 16
 
   def handle() do
     {:ok, message_read} = File.read("message")
@@ -26,7 +18,12 @@ defmodule Dns do
     {message, 0, %DnsMessage{}}
     |> decode_header()
     |> decode_question()
+    |> decode_answer_section()
     |> decode_authortives_section()
+    |> decode_additional_section()
+
+    # {}
+
     |> IO.inspect()
   end
 
@@ -41,15 +38,15 @@ defmodule Dns do
 
   A tuple with the decoded DNS header struct and the remaining message.
   """
-  def decode_header({message, start, parsed_message}) do
+  def decode_header({message, _, parsed_message}) do
     flags = decode_header_value(message, 2, 2)
 
     {
       message,
       12,
-      %Structs.DnsMessage{
+      %DnsMessage{
         parsed_message
-        | header: %Structs.DnsHeader{
+        | header: %DnsHeader{
             id: decode_header_value(message, 0, 2),
             # QR: Query/Response flag
             qr: flags >>> 15 == 1,
@@ -98,9 +95,9 @@ defmodule Dns do
     {
       message,
       stopped_at + 4,
-      %Structs.DnsMessage{
+      %DnsMessage{
         parsed_message
-        | question: %Structs.DnsQuestion{
+        | question: %DnsQuestion{
             type: type,
             name: decoded_name,
             class: class
@@ -122,6 +119,22 @@ defmodule Dns do
     end)
   end
 
+  def decode_answer_section({message, start, parsed_message}) do
+    header = parsed_message.header
+    datal = header.ancount
+
+    {rrs, last} = parse_rr(message, start, [], datal)
+
+    {
+      message,
+      last,
+      %DnsMessage{
+        parsed_message
+        | answers: rrs
+      }
+    }
+  end
+
   def decode_authortives_section({message, start, parsed_message}) do
     header = parsed_message.header
     datal = header.nscount
@@ -133,7 +146,23 @@ defmodule Dns do
       last,
       %DnsMessage{
         parsed_message
-        | resource_records: rrs
+        | authority: rrs
+      }
+    }
+  end
+
+  def decode_additional_section({message, start, parsed_message}) do
+    header = parsed_message.header
+    datal = header.arcount
+
+    {rrs, last} = parse_rr(message, start, [], datal)
+
+    {
+      message,
+      last,
+      %DnsMessage{
+        parsed_message
+        | additional: rrs
       }
     }
   end
@@ -167,7 +196,7 @@ defmodule Dns do
 
         stopped_at = stopped_at + 2
 
-        {decoded_server_name, last} = parse_name(message, stopped_at, [])
+        {decoded_server_name, last} = handle_name(class, type, message, stopped_at, rdl)
 
         rrs = [
           %ResourceRecord{
@@ -189,6 +218,16 @@ defmodule Dns do
     octet >>> 6 == 0b11
   end
 
+  def handle_name(class, type, message, start, rdl) do
+    case is_name(class, type) do
+      true ->
+        parse_name(message, start, [])
+
+      false ->
+        parse_address(message, start, rdl)
+    end
+  end
+
   def parse_name(message, start, result) do
     case Enum.at(message, start) == 0 do
       true ->
@@ -207,12 +246,32 @@ defmodule Dns do
     end
   end
 
-  def decode_server_name(message, start, length) do
-    list = Enum.slice(message, start, length)
-    result = []
+  def is_name(class, type) do
+    class == 1 and type == 2
+  end
 
-    for octet <- list do
-      ispointer = is_pointer(hd(list))
-    end
+  def parse_address(message, start, rdl) do
+    # IO.inspect(Enum.at(message, start + 3))
+    # IO.inspect(start)
+    #
+    # IO.inspect("=======================================")
+    # hex_strings = Enum.map(Enum.slice(message, start, rdl), &Integer.to_string(&1, 16))
+    #
+    # # Combine hexadecimal strings into groups of 4
+    # groups = Enum.chunk_every(hex_strings, 2, 2, :discard)
+    #
+    # # Join the groups with colons and create the IPv6 address
+    # ipv6_address = Enum.join(groups, ":")
+    #
+
+    ipv4_address =
+      message
+      |> Enum.slice(start, rdl)
+      |> Enum.map(&Integer.to_string/1)
+      |> Enum.join(".")
+
+    # IO.puts(ipv4_address)
+
+    {ipv4_address, start + rdl}
   end
 end
